@@ -633,7 +633,7 @@ QtObject {
                 ? [{label:"Metal / VideoToolbox", value:"videotoolbox"}]
                 : backends.filter(backend => ["vulkan", "cuda", "vaapi", "v4l2"].indexOf(backend.backend) >= 0)
                     .map(backend => ({label:String(backend.backend).toUpperCase(), value:backend.backend}))
-        if (Qt.platform.os !== "windows" && Qt.platform.os !== "osx")
+        if (Qt.platform.os !== "osx")
             choices.push({label: qsTr("Software (CPU)"), value: "software"})
         for (const choice of choices) {
             const backend = backends.find(backend => backend.backend

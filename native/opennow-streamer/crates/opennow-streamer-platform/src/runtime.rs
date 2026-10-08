@@ -212,7 +212,7 @@ impl MediaRuntime {
             return Ok(());
         }
         #[cfg(target_os = "windows")]
-        let supported = matches!(requested, "auto" | "d3d11");
+        let supported = matches!(requested, "auto" | "d3d11" | "software" | "ffmpeg");
         #[cfg(target_os = "macos")]
         let supported = matches!(requested, "auto" | "videotoolbox");
         #[cfg(target_os = "linux")]
