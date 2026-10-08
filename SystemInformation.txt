@@ -1,0 +1,47 @@
+
+[System Summary]
+
+Item	Value	
+OS Name	Microsoft Windows 11 Enterprise	
+Version	10.0.26200 Build 26200	
+Other OS Description 	Not Available	
+OS Manufacturer	Microsoft Corporation	
+System Name	WIN-HGRDCPHO2DP	
+System Manufacturer	LENOVO	
+System Model	2539A12	
+System Type	x64-based PC	
+System SKU		
+Processor	Intel(R) Core(TM) i3 CPU       M 380  @ 2.53GHz, 2533 Mhz, 2 Core(s), 4 Logical Processor(s)	
+BIOS Version/Date	LENOVO 6IET80WW (1.40 ), 12/1/2011	
+SMBIOS Version	2.6	
+Embedded Controller Version	1.23	
+BIOS Mode	Legacy	
+BaseBoard Manufacturer	LENOVO	
+BaseBoard Product	2539A12	
+BaseBoard Version	Not Available	
+Platform Role	Mobile	
+Secure Boot State	Unsupported	
+PCR7 Configuration	Binding Not Possible	
+Windows Directory	C:\Windows	
+System Directory	C:\Windows\system32	
+Boot Device	\Device\HarddiskVolume2	
+Locale	United States	
+Hardware Abstraction Layer	Version = "10.0.26100.1"	
+User Name	WIN-HGRDCPHO2DP\Administrator	
+Time Zone	Malay Peninsula Standard Time	
+Installed Physical Memory (RAM)	4.00 GB	
+Total Physical Memory	3.86 GB	
+Available Physical Memory	732 MB	
+Total Virtual Memory	7.16 GB	
+Available Virtual Memory	2.53 GB	
+Page File Space	3.29 GB	
+Page File	C:\pagefile.sys	
+Kernel DMA Protection	Off	
+Virtualization-based security	Not enabled	
+App Control for Business policy	Enforced	
+App Control for Business user mode policy	Off	
+Automatic Device Encryption Support	Reasons for failed automatic device encryption: TPM is not usable, PCR7 binding is not supported, Hardware Security Test Interface failed and device is not Modern Standby, Un-allowed DMA capable bus/device(s) detected, TPM is not usable	
+Hyper-V - VM Monitor Mode Extensions	Yes	
+Hyper-V - Second Level Address Translation Extensions	Yes	
+Hyper-V - Virtualization Enabled in Firmware	Yes	
+Hyper-V - Data Execution Protection	Yes	
