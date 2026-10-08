@@ -363,6 +363,18 @@ impl DiagnosticsService {
                 output.push_str(&format_entry(entry));
             }
         }
+        // Surface the parsed SystemInformation.txt export when present so support
+        // can see why streaming defaults were downgraded (low RAM, legacy CPU,
+        // Legacy BIOS, no Secure Boot, no TPM). The data dir is the diagnostics
+        // directory's parent; locate() also checks the binary's parent and the
+        // OPENNOW_SYSTEM_INFORMATION env var.
+        let data_dir = self.directory.parent().unwrap_or(self.directory.as_path());
+        let system_information = crate::system_info::SystemInformation::load(data_dir);
+        output.push_str("\n\nSystem information\n------------------\n");
+        let rendered = serde_json::to_string_pretty(&crate::system_info::to_json(&system_information))
+            .unwrap_or_else(|_| "{}".to_owned());
+        output.push_str(&redact_lines(&rendered, 16_384));
+        output.push('\n');
         if let Some(runtime) = runtime {
             output.push_str("\n\nStructured runtime snapshot\n---------------------------\n");
             let rendered =

@@ -28,6 +28,7 @@ mod store_catalog_page;
 mod store_index;
 mod store_requests;
 mod streamer;
+mod system_info;
 mod telemetry;
 mod thanks;
 mod updater;

@@ -60,6 +60,7 @@ impl SettingsStore {
         let defaults = defaults();
         let mut values = defaults.clone();
         let mut passthrough = Map::new();
+        let mut persisted_keys: HashSet<String> = HashSet::new();
         let mut migrate_onboarding = false;
         let mut recovered_backup = false;
         let backup = path.with_extension("json.bak");
@@ -99,6 +100,7 @@ impl SettingsStore {
                             } else {
                                 value
                             };
+                            persisted_keys.insert(key.clone());
                             values.insert(key, value);
                         } else if !matches!(key.as_str(), "nativeHdrSupported" | "nativeHdrDisplay")
                         {
@@ -130,6 +132,18 @@ impl SettingsStore {
         };
         if policy == LoadPolicy::ReadWrite {
             store.migrate_native_fullscreen_shortcut();
+            // Adaptive defaults derived from SystemInformation.txt (when present
+            // in the data dir, next to the binary, or pointed at by
+            // OPENNOW_SYSTEM_INFORMATION) downgrade streaming settings to a
+            // profile constrained hosts can sustain. Only keys the user has
+            // never persisted are touched, so explicit user values survive.
+            let system_information =
+                crate::system_info::SystemInformation::load(store.path.parent().unwrap_or_else(|| Path::new(".")));
+            crate::system_info::apply_adaptive_defaults(
+                &mut store.values,
+                &persisted_keys,
+                &system_information,
+            );
         }
         // Old builds enabled automatic switching by default, so an existing
         // true value is not reliable evidence of opt-in. Reset that policy once;
@@ -1675,6 +1689,60 @@ mod tests {
         assert_eq!(reloaded.all()["replayBufferSeconds"], json!(15));
         assert_eq!(reloaded.all()["replayBufferMemoryMiB"], json!(512));
         fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn system_information_adaptive_defaults_apply_only_to_unset_keys() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let directory = env::temp_dir().join(format!("opennow-adaptive-{unique}"));
+        fs::create_dir_all(&directory).unwrap();
+        // The exact export the repo ships — 4 GB RAM, Arrandale i3, Legacy BIOS,
+        // no Secure Boot, no TPM.
+        fs::write(
+            directory.join("SystemInformation.txt"),
+            b"\n[System Summary]\n\nItem\tValue\t\nOS Name\tMicrosoft Windows 11 Enterprise\t\nVersion\t10.0.26200 Build 26200\t\nProcessor\tIntel(R) Core(TM) i3 CPU       M 380  @ 2.53GHz, 2533 Mhz, 2 Core(s), 4 Logical Processor(s)\t\nBIOS Mode\tLegacy\t\nSecure Boot State\tUnsupported\t\nInstalled Physical Memory (RAM)\t4.00 GB\t\nAvailable Physical Memory\t732 MB\t\nAutomatic Device Encryption Support\tReasons for failed automatic device encryption: TPM is not usable, PCR7 binding is not supported\t\n",
+        )
+        .unwrap();
+
+        let store = SettingsStore::load(Some(directory.clone())).unwrap();
+        let all = store.all();
+        // low_memory overrides
+        assert_eq!(all["resolution"], json!("1280x720"));
+        assert_eq!(all["fps"], json!(30));
+        assert_eq!(all["maxBitrateMbps"], json!(20));
+        assert_eq!(all["replayBufferMemoryMiB"], json!(64));
+        // legacy_cpu overrides (normalize_choice is case-sensitive, so the
+        // override must be lowercase "h264" to survive normalize).
+        assert_eq!(all["codec"], json!("h264"));
+        assert_eq!(all["fallbackCodec"], json!("h264"));
+        assert_eq!(all["decoderPreference"], json!("software"));
+        assert_eq!(all["nativeVideoBackend"], json!("software"));
+        assert_eq!(all["enableHdr"], json!(false));
+        assert_eq!(all["colorQuality"], json!("8bit_420"));
+
+        // A user who explicitly tuned fps must keep that value across reloads
+        // (fps clamps to [30, 360], so a value within bounds survives the
+        // adaptive override that would otherwise drop it to 30).
+        let mut customized = SettingsStore::load(Some(directory.clone())).unwrap();
+        customized.set("fps", json!(45)).unwrap();
+        let reloaded = SettingsStore::load(Some(directory.clone())).unwrap();
+        assert_eq!(reloaded.all()["fps"], json!(45));
+
+        // On a host with no SystemInformation.txt, adaptive defaults leave the
+        // stock values alone.
+        let other = env::temp_dir().join(format!("opennow-adaptive-empty-{unique}"));
+        fs::create_dir_all(&other).unwrap();
+        let plain = SettingsStore::load(Some(other.clone())).unwrap();
+        assert_eq!(plain.all()["resolution"], json!("1920x1080"));
+        assert_eq!(plain.all()["fps"], json!(60));
+        assert_eq!(plain.all()["maxBitrateMbps"], json!(75));
+        assert_eq!(plain.all()["codec"], json!("auto"));
+
+        fs::remove_dir_all(directory).unwrap();
+        fs::remove_dir_all(other).unwrap();
     }
 
     #[test]
