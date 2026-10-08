@@ -36,6 +36,16 @@
 
 #include <cstdlib>
 
+#if defined(Q_OS_WIN)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
 using namespace Qt::StringLiterals;
 
 namespace {
@@ -78,7 +88,54 @@ static int runApplicationSession(int argc, char *argv[], QString &restartExecuta
     QQuickWindow::setDefaultAlphaBuffer(true);
     QQuickWindow::setTextRenderType(QQuickWindow::QtTextRendering);
 #if defined(Q_OS_WIN)
-    QQuickWindow::setGraphicsApi(QSGRendererInterface::Direct3D11);
+    // Constrained hosts (see SystemInformation.txt: e.g. Intel HD Graphics on
+    // the Arrandale i3 M 380 with 4 GB RAM) can fail D3D11 initialization at
+    // window creation time ("Failed to initialize graphics backend for
+    // D3D11"). Probe the adapter up front and fall back to the Qt software
+    // renderer before any window exists, so the session starts regardless.
+    {
+        auto useSoftware = [](const char *reason) {
+            qWarning("OpenNOW: %s; falling back to the Qt software scene graph "
+                     "(QSG_RHI_BACKEND=software).", reason);
+            qputenv("QSG_RHI_BACKEND", "software");
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::Software);
+        };
+        const auto backendOverride = qEnvironmentVariable("OPENNOW_GRAPHICS_BACKEND");
+        if (backendOverride.compare(u"software", Qt::CaseInsensitive) == 0) {
+            useSoftware("OPENNOW_GRAPHICS_BACKEND=software requested");
+        } else if (backendOverride.compare(u"d3d11", Qt::CaseInsensitive) != 0) {
+            bool d3d11Available = false;
+            HMODULE d3d11Module = LoadLibraryW(L"d3d11.dll");
+            if (d3d11Module) {
+                using D3D11CreateDeviceFn = HRESULT(WINAPI *)(
+                    void *, int, HMODULE, unsigned, void *, unsigned, unsigned,
+                    void *, void *, void *);
+                if (auto *createDevice = reinterpret_cast<D3D11CreateDeviceFn>(
+                        GetProcAddress(d3d11Module, "D3D11CreateDevice"))) {
+                    void *device = nullptr;
+                    void *context = nullptr;
+                    // D3D_DRIVER_TYPE_HARDWARE == 1, D3D11_SDK_VERSION == 7.
+                    if (SUCCEEDED(createDevice(nullptr, /*D3D_DRIVER_TYPE_HARDWARE*/ 1,
+                                               nullptr, 0, nullptr, 0,
+                                               /*D3D11_SDK_VERSION*/ 7, nullptr,
+                                               nullptr, &device, &context))) {
+                        if (device)
+                            static_cast<IUnknown *>(device)->Release();
+                        if (context)
+                            static_cast<IUnknown *>(context)->Release();
+                        d3d11Available = true;
+                    }
+                }
+                FreeLibrary(d3d11Module);
+            }
+            if (!d3d11Available)
+                useSoftware("Failed to initialize graphics backend for D3D11");
+            else
+                QQuickWindow::setGraphicsApi(QSGRendererInterface::Direct3D11);
+        } else {
+            QQuickWindow::setGraphicsApi(QSGRendererInterface::Direct3D11);
+        }
+    }
 #elif defined(Q_OS_MACOS)
     QQuickWindow::setGraphicsApi(QSGRendererInterface::Metal);
 #elif defined(Q_OS_LINUX)

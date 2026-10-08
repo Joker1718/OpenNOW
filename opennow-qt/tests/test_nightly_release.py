@@ -19,19 +19,15 @@ class NightlyReleaseTest(unittest.TestCase):
         self.version = "1.0.0-nightly.123.2"
         self.commit = "a" * 40
         self.packages = []
-        for arch in ("x64", "arm64"):
-            for platform, extension in (("Windows", "msi"), ("Windows", "zip"), ("Linux", "AppImage"), ("Linux", "AppImage.zsync"), ("Linux", "deb")):
-                package = self.source / f"{platform}-{arch}" / f"OpenNOW-Qt-{self.version}-{platform}-{arch}.{extension}"
-                package.parent.mkdir(parents=True, exist_ok=True)
-                package.write_bytes(f"test fixture {platform} {arch}".encode())
-                self.packages.append(package)
-        for arch in ("x64", "arm64"):
-            package = self.source / f"Windows-{arch}" / f"OpenNOW-Qt-{self.version}-Windows-{arch}-setup.exe"
-            package.write_bytes(f"test fixture setup {arch}".encode())
+        # Custom OpenNOW build: Windows x64 only (see qt-build.yml matrix).
+        for platform, extension in (("Windows", "msi"), ("Windows", "zip")):
+            package = self.source / f"{platform}-x64" / f"OpenNOW-Qt-{self.version}-{platform}-x64.{extension}"
+            package.parent.mkdir(parents=True, exist_ok=True)
+            package.write_bytes(f"test fixture {platform} x64".encode())
             self.packages.append(package)
-        package = self.source / "Darwin-arm64" / f"OpenNOW-Qt-{self.version}-Darwin-arm64.dmg"
-        package.parent.mkdir(parents=True)
-        package.write_bytes(b"test fixture Darwin arm64")
+        package = self.source / "Windows-x64" / f"OpenNOW-Qt-{self.version}-Windows-x64-setup.exe"
+        package.parent.mkdir(parents=True, exist_ok=True)
+        package.write_bytes(b"test fixture setup x64")
         self.packages.append(package)
 
     def collect(self):
